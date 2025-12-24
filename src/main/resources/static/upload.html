@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Upload PDF</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 50px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input[type="file"] {
+            padding: 5px;
+        }
+
+        button {
+            padding: 8px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        #message {
+            margin-top: 15px;
+            font-weight: bold;
+        }
+
+        #message.success {
+            color: green;
+        }
+
+        #message.error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+<h1>Upload PDF</h1>
+<form id="uploadForm">
+    <input type="file" id="fileInput" name="file" accept=".pdf" required />
+    <button type="submit">Upload</button>
+</form>
+<div id="message"></div>
+
+<script>
+    const form = document.getElementById('uploadForm');
+    const message = document.getElementById('message');
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        message.textContent = '';
+
+        const fileInput = document.getElementById('fileInput');
+        const file = fileInput.files[0];
+
+        if (!file) {
+            message.textContent = 'Please select a file!';
+            message.className = 'error';
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await fetch('/api/pdf/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                const text = await response.text();
+                message.textContent = text;
+                message.className = 'success';
+            } else {
+                const text = await response.text();
+                message.textContent = 'Error: ' + text;
+                message.className = 'error';
+            }
+        } catch (err) {
+            message.textContent = 'Upload failed: ' + err;
+            message.className = 'error';
+        }
+    });
+</script>
+</body>
+</html>
