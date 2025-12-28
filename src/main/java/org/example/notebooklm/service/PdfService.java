@@ -2,100 +2,142 @@ package org.example.notebooklm.service;
 
 import org.example.notebooklm.model.PdfChunk;
 import org.example.notebooklm.model.PdfDocument;
+import org.example.notebooklm.repository.PdfChunkRepository;
 import org.example.notebooklm.repository.PdfDocumentRepository;
 import org.springframework.stereotype.Service;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.text.PDFTextStripper;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.Optional;
+
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
 
 @Service
 public class PdfService {
 
-    private static final Logger log = LoggerFactory.getLogger(PdfService.class);
+    private final GeminiEmbeddingService geminiEmbeddingService;
+    private final PdfDocumentRepository documentRepository;
+    private final PdfChunkRepository chunkRepository;
 
-    private final PdfDocumentRepository pdfDocumentRepository;
-
-    public PdfService(PdfDocumentRepository pdfDocumentRepository) {
-        this.pdfDocumentRepository = pdfDocumentRepository;
+    public PdfService(GeminiEmbeddingService geminiEmbeddingService,
+                      PdfDocumentRepository documentRepository,
+                      PdfChunkRepository chunkRepository) {
+        this.geminiEmbeddingService = geminiEmbeddingService;
+        this.documentRepository = documentRepository;
+        this.chunkRepository = chunkRepository;
     }
 
-    public boolean deletePdf(Long id) {
-        return pdfDocumentRepository.findById(id)
-                .map(pdf -> {
-                    log.info("Deleting PDF with id {}", id);
-                    pdfDocumentRepository.delete(pdf);
-                    return true;
-                })
-                .orElse(false);
+    // ===========================
+    // 1. Upload + Process PDF
+    // ===========================
+    public PdfDocument processPdf(MultipartFile file) {
+        try {
+            // Extract text
+            String text = extractTextFromPdf(file.getInputStream());
+
+            // Create document entity
+            PdfDocument pdfDocument = new PdfDocument();
+            pdfDocument.setFilename(file.getOriginalFilename());
+            pdfDocument.setContent(text);
+
+            pdfDocument = documentRepository.save(pdfDocument);
+
+            // Split into chunks
+            List<String> chunks = splitIntoChunks(text, 1000);
+
+            // Generate embeddings + save chunks
+            for (int i = 0; i < chunks.size(); i++) {
+                String chunkText = chunks.get(i);
+
+                double[] embedding = geminiEmbeddingService.generateEmbedding(chunkText);
+
+                if (embedding == null) {
+                    System.err.println("Failed to generate embedding for chunk " + i);
+                    continue;
+                }
+
+                PdfChunk chunk = new PdfChunk();
+                chunk.setChunkIndex(i);
+                chunk.setText(chunkText);
+                chunk.setEmbedding(embedding);
+                chunk.setPdfDocument(pdfDocument);
+
+                chunkRepository.save(chunk);
+            }
+
+            return pdfDocument;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("Failed to process PDF", e);
+        }
     }
+
+    // ===========================
+    // 2. Get all PDFs
+    // ===========================
     public List<PdfDocument> getAllPdfs() {
-        return pdfDocumentRepository.findAll();
+        return documentRepository.findAll();
     }
 
+    // ===========================
+    // 3. Get chunks for a PDF
+    // ===========================
     public List<PdfChunk> getChunksForPdf(Long id) {
-        return pdfDocumentRepository.findById(id)
-                .map(PdfDocument::getChunks)
-                .orElse(null);
+        Optional<PdfDocument> doc = documentRepository.findById(id);
+        return doc.map(PdfDocument::getChunks).orElse(null);
     }
 
+    // ===========================
+    // 4. Delete PDF + chunks
+    // ===========================
+    public boolean deletePdf(Long id) {
+        Optional<PdfDocument> doc = documentRepository.findById(id);
 
-
-    public PdfDocument savePdf(byte[] fileBytes, String filename) throws IOException {
-
-        log.info("Starting PDF upload: {}", filename);
-
-        // המרת PDF לטקסט
-        PDDocument document = PDDocument.load(fileBytes);
-        PDFTextStripper stripper = new PDFTextStripper();
-        String text = stripper.getText(document);
-        document.close();
-
-        log.info("PDF text extracted. Length: {} characters", text.length());
-
-        // יצירת PdfDocument
-        PdfDocument pdfDocument = new PdfDocument();
-        pdfDocument.setFilename(filename);
-        pdfDocument.setContent(text);
-
-        // פיצול טקסט ל־chunks
-        List<PdfChunk> chunks = splitTextToChunks(text, 500);
-        log.info("Created {} chunks for PDF {}", chunks.size(), filename);
-
-        for (int i = 0; i < chunks.size(); i++) {
-            PdfChunk chunk = chunks.get(i);
-            chunk.setChunkIndex(i);
-            chunk.setPdfDocument(pdfDocument);
+        if (doc.isEmpty()) {
+            return false;
         }
 
-        pdfDocument.setChunks(chunks);
-
-        // שמירה ב־DB
-        pdfDocumentRepository.save(pdfDocument);
-
-        log.info("PDF {} saved successfully with {} chunks", filename, chunks.size());
-
-        return pdfDocument;
+        documentRepository.delete(doc.get());
+        return true;
     }
 
-    private List<PdfChunk> splitTextToChunks(String text, int chunkSize) {
-        List<PdfChunk> chunks = new ArrayList<>();
-        int length = text.length();
+    // ===========================
+    // Helpers
+    // ===========================
+    private String extractTextFromPdf(InputStream inputStream) throws Exception {
+        try (PDDocument document = PDDocument.load(inputStream)) {
+            PDFTextStripper stripper = new PDFTextStripper();
+            return stripper.getText(document);
+        }
+    }
 
-        log.info("Splitting text into chunks of {} characters", chunkSize);
+    private List<String> splitIntoChunks(String text, int maxChars) {
+        List<String> chunks = new ArrayList<>();
 
-        for (int i = 0; i < length; i += chunkSize) {
-            int end = Math.min(length, i + chunkSize);
-            String chunkText = text.substring(i, end);
-            PdfChunk chunk = new PdfChunk();
-            chunk.setText(chunkText);
-            chunks.add(chunk);
+        String[] words = text.split("\\s+");
+        StringBuilder current = new StringBuilder();
+
+        for (String word : words) {
+            if (current.length() + word.length() + 1 > maxChars) {
+                chunks.add(current.toString());
+                current = new StringBuilder();
+            }
+            current.append(word).append(" ");
+        }
+
+        if (!current.isEmpty()) {
+            chunks.add(current.toString());
         }
 
         return chunks;
     }
+    public void resetAll() {
+        chunkRepository.deleteAll();
+        documentRepository.deleteAll();
+    }
+
 }

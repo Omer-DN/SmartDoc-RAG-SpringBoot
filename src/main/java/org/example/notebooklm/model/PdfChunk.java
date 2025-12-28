@@ -25,7 +25,7 @@ public class PdfChunk {
     private PdfDocument pdfDocument;
 
     @Type(DoubleArrayType.class)
-    @Column(columnDefinition = "vector(1536)")
+    @Column(columnDefinition = "double precision[]") // הכי בטוח ל-Gemini
     private double[] embedding;
 
     public Long getId() {

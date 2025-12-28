@@ -10,11 +10,14 @@ import org.springframework.web.client.RestTemplate;
 public class EmbeddingService {
 
     private static final String API_URL = "https://api.openai.com/v1/embeddings";
+
     private static final String MODEL = "text-embedding-3-small";
 
     private final ObjectMapper mapper = new ObjectMapper();
 
     public double[] generateEmbedding(String text) {
+        System.out.println("API KEY = " + System.getenv("OPENAI_API_KEY"));
+
         try {
             RestTemplate rest = new RestTemplate();
 
@@ -36,6 +39,7 @@ public class EmbeddingService {
                     rest.postForEntity(API_URL, entity, String.class);
 
             JsonNode json = mapper.readTree(response.getBody());
+            System.out.println("Embedding API response: " + response.getBody());
 
             JsonNode arr = json.get("data").get(0).get("embedding");
 
@@ -47,8 +51,10 @@ public class EmbeddingService {
             return vector;
 
         } catch (Exception e) {
+            System.out.println("Embedding ERROR: " + e.getMessage());
             e.printStackTrace();
             return null;
         }
+
     }
 }

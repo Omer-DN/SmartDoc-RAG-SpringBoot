@@ -2,6 +2,7 @@ package org.example.notebooklm.model;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -18,9 +19,20 @@ public class PdfDocument {
     @Column(columnDefinition = "TEXT")
     private String content;
 
-    @OneToMany(mappedBy = "pdfDocument", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "pdfDocument", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JsonManagedReference
-    private List<PdfChunk> chunks;
+    private List<PdfChunk> chunks = new ArrayList<>();
+
+    // ===== helpers =====
+    public void addChunk(PdfChunk chunk) {
+        chunks.add(chunk);
+        chunk.setPdfDocument(this);
+    }
+
+    public void removeChunk(PdfChunk chunk) {
+        chunks.remove(chunk);
+        chunk.setPdfDocument(null);
+    }
 
     // ===== getters & setters =====
     public Long getId() {
