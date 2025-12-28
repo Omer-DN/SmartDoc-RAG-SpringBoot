@@ -30,25 +30,18 @@ public class PdfService {
         this.chunkRepository = chunkRepository;
     }
 
-    // ===========================
-    // 1. Upload + Process PDF
-    // ===========================
     public PdfDocument processPdf(MultipartFile file) {
         try {
-            // Extract text
             String text = extractTextFromPdf(file.getInputStream());
 
-            // Create document entity
             PdfDocument pdfDocument = new PdfDocument();
             pdfDocument.setFilename(file.getOriginalFilename());
             pdfDocument.setContent(text);
 
             pdfDocument = documentRepository.save(pdfDocument);
 
-            // Split into chunks
             List<String> chunks = splitIntoChunks(text, 1000);
 
-            // Generate embeddings + save chunks
             for (int i = 0; i < chunks.size(); i++) {
                 String chunkText = chunks.get(i);
 
@@ -63,7 +56,9 @@ public class PdfService {
                 chunk.setChunkIndex(i);
                 chunk.setText(chunkText);
                 chunk.setEmbedding(embedding);
-                chunk.setPdfDocument(pdfDocument);
+
+                // חשוב! זה מחבר את ה-chunk למסמך
+                pdfDocument.addChunk(chunk);
 
                 chunkRepository.save(chunk);
             }
@@ -76,24 +71,15 @@ public class PdfService {
         }
     }
 
-    // ===========================
-    // 2. Get all PDFs
-    // ===========================
     public List<PdfDocument> getAllPdfs() {
         return documentRepository.findAll();
     }
 
-    // ===========================
-    // 3. Get chunks for a PDF
-    // ===========================
     public List<PdfChunk> getChunksForPdf(Long id) {
         Optional<PdfDocument> doc = documentRepository.findById(id);
         return doc.map(PdfDocument::getChunks).orElse(null);
     }
 
-    // ===========================
-    // 4. Delete PDF + chunks
-    // ===========================
     public boolean deletePdf(Long id) {
         Optional<PdfDocument> doc = documentRepository.findById(id);
 
@@ -105,9 +91,6 @@ public class PdfService {
         return true;
     }
 
-    // ===========================
-    // Helpers
-    // ===========================
     private String extractTextFromPdf(InputStream inputStream) throws Exception {
         try (PDDocument document = PDDocument.load(inputStream)) {
             PDFTextStripper stripper = new PDFTextStripper();
@@ -135,9 +118,9 @@ public class PdfService {
 
         return chunks;
     }
+
     public void resetAll() {
         chunkRepository.deleteAll();
         documentRepository.deleteAll();
     }
-
 }

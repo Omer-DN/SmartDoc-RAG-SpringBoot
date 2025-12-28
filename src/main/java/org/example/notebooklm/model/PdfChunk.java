@@ -2,7 +2,6 @@ package org.example.notebooklm.model;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
-
 import java.util.Arrays;
 
 @Entity
@@ -13,8 +12,7 @@ public class PdfChunk {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Lob
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "text")
     private String text;
 
     @Column(name = "chunk_index")
@@ -25,12 +23,9 @@ public class PdfChunk {
     @JsonBackReference
     private PdfDocument pdfDocument;
 
-    // ✅ embedding נשמר כ-TEXT
-    @Lob
-    @Column(columnDefinition = "TEXT")
+    // נשמר ב-Postgres כ-vector(768), ב-Java כמערך double[]
+    @Column(columnDefinition = "vector(768)")
     private String embedding;
-
-    // ===== getters & setters =====
 
     public Long getId() {
         return id;
@@ -60,25 +55,19 @@ public class PdfChunk {
         this.pdfDocument = pdfDocument;
     }
 
-    // מקבל double[] (מ-Gemini) ושומר כ-String
+    // setter שמתאים לשורה chunk.setEmbedding(embedding);
     public void setEmbedding(double[] arr) {
-        if (arr == null) {
-            this.embedding = null;
-            return;
-        }
-        this.embedding = Arrays.toString(arr);
+        this.embedding = Arrays.toString(arr)
+                .replace("[", "")
+                .replace("]", "");
     }
 
-    // מחזיר חזרה double[] אם צריך
+    // getter שמחזיר double[] מה-DB
     public double[] getEmbedding() {
         if (embedding == null || embedding.isBlank()) {
             return new double[0];
         }
-
-        return Arrays.stream(
-                        embedding.replace("[", "")
-                                .replace("]", "")
-                                .split(","))
+        return Arrays.stream(embedding.split(","))
                 .map(String::trim)
                 .mapToDouble(Double::parseDouble)
                 .toArray();
