@@ -1,10 +1,11 @@
 package org.example.notebooklm.model;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
-import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
-@Table(name = "pdf_document")
+@Table(name = "pdf_documents")
 public class PdfDocument {
 
     @Id
@@ -14,20 +15,39 @@ public class PdfDocument {
     private String filename;
 
     @Lob
-    private String content; // הטקסט שנחלץ מה-PDF
+    @Column(columnDefinition = "TEXT")
+    private String content;
 
-    private LocalDateTime uploadedAt = LocalDateTime.now();
+    @OneToMany(mappedBy = "pdfDocument", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @JsonManagedReference
+    private List<PdfChunk> chunks;
 
-    // getters ו-setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    // ===== getters & setters =====
+    public Long getId() {
+        return id;
+    }
 
-    public String getFilename() { return filename; }
-    public void setFilename(String filename) { this.filename = filename; }
+    public String getFilename() {
+        return filename;
+    }
 
-    public String getContent() { return content; }
-    public void setContent(String content) { this.content = content; }
+    public void setFilename(String filename) {
+        this.filename = filename;
+    }
 
-    public LocalDateTime getUploadedAt() { return uploadedAt; }
-    public void setUploadedAt(LocalDateTime uploadedAt) { this.uploadedAt = uploadedAt; }
+    public String getContent() {
+        return content;
+    }
+
+    public void setContent(String content) {
+        this.content = content;
+    }
+
+    public List<PdfChunk> getChunks() {
+        return chunks;
+    }
+
+    public void setChunks(List<PdfChunk> chunks) {
+        this.chunks = chunks;
+    }
 }

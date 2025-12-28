@@ -1,52 +1,74 @@
 package org.example.notebooklm.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.example.notebooklm.model.PdfChunk;
 import org.example.notebooklm.model.PdfDocument;
-import org.example.notebooklm.repository.PdfDocumentRepository;
+import org.example.notebooklm.service.PdfService;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.text.PDFTextStripper;
 
-import java.io.IOException;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/pdf")
+@Tag(name = "PDF Management", description = "Upload, list, view and delete PDF documents")
 public class PdfController {
 
-    private final PdfDocumentRepository pdfDocumentRepository;
+    private final PdfService pdfService;
 
-    public PdfController(PdfDocumentRepository pdfDocumentRepository) {
-        this.pdfDocumentRepository = pdfDocumentRepository;
+    public PdfController(PdfService pdfService) {
+        this.pdfService = pdfService;
     }
 
-    @PostMapping("/upload")
+    @Operation(summary = "Upload a PDF file")
+    @PostMapping(
+            value = "/upload",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
     public ResponseEntity<String> uploadPdf(@RequestParam("file") MultipartFile file) {
-        if (file.isEmpty() || !file.getOriginalFilename().endsWith(".pdf")) {
+        if (file.isEmpty() || !file.getOriginalFilename().toLowerCase().endsWith(".pdf")) {
             return ResponseEntity.badRequest().body("Please upload a valid PDF file");
         }
 
         try {
-            // המרת PDF לטקסט
-            PDDocument document = PDDocument.load(file.getInputStream());
-            PDFTextStripper stripper = new PDFTextStripper();
-            String text = stripper.getText(document);
-            document.close();
-
-            // שמירה ב-DB
-
-            PdfDocument pdfDocument = new PdfDocument();
-            pdfDocument.setFilename(file.getOriginalFilename());
-            pdfDocument.setContent(text);
-            pdfDocumentRepository.save(pdfDocument);
-
-            return ResponseEntity.ok("File uploaded and saved: " + file.getOriginalFilename());
-        } catch (IOException e) {
+            pdfService.savePdf(file.getBytes(), file.getOriginalFilename());
+            return ResponseEntity.ok("PDF uploaded, document + chunks saved");
+        } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(500).body("Error processing PDF");
+        }
+    }
+
+    @Operation(summary = "Get list of all uploaded PDFs")
+    @GetMapping
+    public List<PdfDocument> getAllPdfs() {
+        return pdfService.getAllPdfs();
+    }
+
+    @Operation(summary = "Get all chunks for a specific PDF")
+    @GetMapping("/{id}/chunks")
+    public ResponseEntity<?> getChunks(@PathVariable Long id) {
+        List<PdfChunk> chunks = pdfService.getChunksForPdf(id);
+
+        if (chunks == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.ok(chunks);
+    }
+
+
+    @Operation(summary = "Delete a PDF and its chunks")
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deletePdf(@PathVariable Long id) {
+        boolean deleted = pdfService.deletePdf(id);
+        if (deleted) {
+            return ResponseEntity.ok("PDF and its chunks deleted successfully.");
+        } else {
+            return ResponseEntity.notFound().build();
         }
     }
 }

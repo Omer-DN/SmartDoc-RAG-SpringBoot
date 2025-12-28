@@ -25,6 +25,7 @@ public class PdfChunk {
     @JsonBackReference
     private PdfDocument pdfDocument;
 
+
     // ===== getters & setters =====
 
     public Long getId() {
