@@ -1,4 +1,4 @@
-package org.example.notebooklm.controller;
+/*package org.example.notebooklm.controller;
 
 import org.example.notebooklm.model.PdfChunk;
 import org.example.notebooklm.repository.PdfDocumentRepository;
@@ -24,3 +24,4 @@ public class PdfChunkController {
                 .orElse(ResponseEntity.notFound().build());
     }
 }
+*/

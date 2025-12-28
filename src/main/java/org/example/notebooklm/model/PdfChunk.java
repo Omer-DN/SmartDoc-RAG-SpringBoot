@@ -1,8 +1,9 @@
 package org.example.notebooklm.model;
-import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.vladmihalcea.hibernate.type.array.DoubleArrayType;
 import jakarta.persistence.*;
+import org.hibernate.annotations.Type;
 
 @Entity
 @Table(name = "pdf_chunks")
@@ -12,10 +13,8 @@ public class PdfChunk {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Lob
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "text")
     private String text;
-
 
     @Column(name = "chunk_index")
     private int chunkIndex;
@@ -25,8 +24,9 @@ public class PdfChunk {
     @JsonBackReference
     private PdfDocument pdfDocument;
 
-
-    // ===== getters & setters =====
+    @Type(DoubleArrayType.class)
+    @Column(columnDefinition = "vector(1536)")
+    private double[] embedding;
 
     public Long getId() {
         return id;
@@ -54,5 +54,13 @@ public class PdfChunk {
 
     public void setPdfDocument(PdfDocument pdfDocument) {
         this.pdfDocument = pdfDocument;
+    }
+
+    public double[] getEmbedding() {
+        return embedding;
+    }
+
+    public void setEmbedding(double[] embedding) {
+        this.embedding = embedding;
     }
 }
