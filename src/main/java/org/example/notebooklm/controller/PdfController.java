@@ -25,21 +25,18 @@ public class PdfController {
     }
 
     @Operation(summary = "Upload a PDF file")
-    @ApiResponse(responseCode = "200", description = "PDF uploaded successfully")
-    @ApiResponse(responseCode = "400", description = "Invalid PDF file")
-    @ApiResponse(responseCode = "500", description = "Error processing PDF")
     @PostMapping(
             value = "/upload",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE
     )
-    public ResponseEntity<String> uploadPdf(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<?> uploadPdf(@RequestParam("file") MultipartFile file) {
         if (file.isEmpty() || !file.getOriginalFilename().toLowerCase().endsWith(".pdf")) {
             return ResponseEntity.badRequest().body("Please upload a valid PDF file");
         }
 
         try {
-            pdfService.savePdf(file.getBytes(), file.getOriginalFilename());
-            return ResponseEntity.ok("PDF uploaded, document + chunks saved");
+            PdfDocument doc = pdfService.processPdf(file);
+            return ResponseEntity.ok("PDF uploaded. Document ID: " + doc.getId());
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(500).body("Error processing PDF");
@@ -47,15 +44,12 @@ public class PdfController {
     }
 
     @Operation(summary = "Get list of all uploaded PDFs")
-    @ApiResponse(responseCode = "200", description = "List of PDFs returned")
     @GetMapping
     public List<PdfDocument> getAllPdfs() {
         return pdfService.getAllPdfs();
     }
 
     @Operation(summary = "Get all chunks for a specific PDF")
-    @ApiResponse(responseCode = "200", description = "List of chunks returned")
-    @ApiResponse(responseCode = "404", description = "PDF not found")
     @GetMapping("/{id}/chunks")
     public ResponseEntity<?> getChunks(@PathVariable Long id) {
         List<PdfChunk> chunks = pdfService.getChunksForPdf(id);
@@ -68,8 +62,6 @@ public class PdfController {
     }
 
     @Operation(summary = "Delete a PDF and its chunks")
-    @ApiResponse(responseCode = "200", description = "PDF deleted successfully")
-    @ApiResponse(responseCode = "404", description = "PDF not found")
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deletePdf(@PathVariable Long id) {
         boolean deleted = pdfService.deletePdf(id);
@@ -79,4 +71,10 @@ public class PdfController {
             return ResponseEntity.notFound().build();
         }
     }
+    @DeleteMapping("/reset")
+    public ResponseEntity<String> reset() {
+        pdfService.resetAll();
+        return ResponseEntity.ok("All documents and chunks deleted.");
+    }
+
 }
