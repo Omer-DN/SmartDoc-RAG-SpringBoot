@@ -20,7 +20,7 @@ import java.util.Map;
 public class PdfController {
 
     private final PdfService pdfService;
-    private final RagService ragService; // שירות ה-RAG שלנו
+    private final RagService ragService;
 
     public PdfController(PdfService pdfService, RagService ragService) {
         this.pdfService = pdfService;
