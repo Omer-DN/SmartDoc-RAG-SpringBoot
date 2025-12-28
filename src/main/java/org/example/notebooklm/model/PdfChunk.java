@@ -1,9 +1,9 @@
 package org.example.notebooklm.model;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.vladmihalcea.hibernate.type.array.DoubleArrayType;
 import jakarta.persistence.*;
-import org.hibernate.annotations.Type;
+
+import java.util.Arrays;
 
 @Entity
 @Table(name = "pdf_chunks")
@@ -13,7 +13,8 @@ public class PdfChunk {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(columnDefinition = "text")
+    @Lob
+    @Column(columnDefinition = "TEXT")
     private String text;
 
     @Column(name = "chunk_index")
@@ -24,9 +25,12 @@ public class PdfChunk {
     @JsonBackReference
     private PdfDocument pdfDocument;
 
-    @Type(DoubleArrayType.class)
-    @Column(columnDefinition = "double precision[]") // הכי בטוח ל-Gemini
-    private double[] embedding;
+    // ✅ embedding נשמר כ-TEXT
+    @Lob
+    @Column(columnDefinition = "TEXT")
+    private String embedding;
+
+    // ===== getters & setters =====
 
     public Long getId() {
         return id;
@@ -56,11 +60,27 @@ public class PdfChunk {
         this.pdfDocument = pdfDocument;
     }
 
-    public double[] getEmbedding() {
-        return embedding;
+    // מקבל double[] (מ-Gemini) ושומר כ-String
+    public void setEmbedding(double[] arr) {
+        if (arr == null) {
+            this.embedding = null;
+            return;
+        }
+        this.embedding = Arrays.toString(arr);
     }
 
-    public void setEmbedding(double[] embedding) {
-        this.embedding = embedding;
+    // מחזיר חזרה double[] אם צריך
+    public double[] getEmbedding() {
+        if (embedding == null || embedding.isBlank()) {
+            return new double[0];
+        }
+
+        return Arrays.stream(
+                        embedding.replace("[", "")
+                                .replace("]", "")
+                                .split(","))
+                .map(String::trim)
+                .mapToDouble(Double::parseDouble)
+                .toArray();
     }
 }
