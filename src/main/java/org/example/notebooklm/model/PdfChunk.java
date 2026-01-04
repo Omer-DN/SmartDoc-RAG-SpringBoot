@@ -2,7 +2,8 @@ package org.example.notebooklm.model;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
-import java.util.Arrays;
+import org.hibernate.annotations.Type;
+import com.vladmihalcea.hibernate.type.array.DoubleArrayType;
 
 @Entity
 @Table(name = "pdf_chunks")
@@ -23,9 +24,10 @@ public class PdfChunk {
     @JsonBackReference
     private PdfDocument pdfDocument;
 
-    // נשמר ב-Postgres כ-vector(768), ב-Java כמערך double[]
+    // ⭐ הפתרון הנכון: Hibernate ממפה double[] ל-vector דרך DoubleArrayType
+    @Type(DoubleArrayType.class)
     @Column(columnDefinition = "vector(768)")
-    private String embedding;
+    private double[] embedding;
 
     public Long getId() {
         return id;
@@ -55,21 +57,11 @@ public class PdfChunk {
         this.pdfDocument = pdfDocument;
     }
 
-    // setter שמתאים לשורה chunk.setEmbedding(embedding);
-    public void setEmbedding(double[] arr) {
-        this.embedding = Arrays.toString(arr)
-                .replace("[", "")
-                .replace("]", "");
+    public double[] getEmbedding() {
+        return embedding;
     }
 
-    // getter שמחזיר double[] מה-DB
-    public double[] getEmbedding() {
-        if (embedding == null || embedding.isBlank()) {
-            return new double[0];
-        }
-        return Arrays.stream(embedding.split(","))
-                .map(String::trim)
-                .mapToDouble(Double::parseDouble)
-                .toArray();
+    public void setEmbedding(double[] embedding) {
+        this.embedding = embedding;
     }
 }
