@@ -119,6 +119,7 @@ public class PdfService {
         return chunks;
     }
 
+
     public void resetAll() {
         chunkRepository.deleteAll();
         documentRepository.deleteAll();
