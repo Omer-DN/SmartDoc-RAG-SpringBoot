@@ -75,5 +75,4 @@ public class PdfChunk {
     public void setDistance(Double distance) {
         this.distance = distance;
     }
-
 }
