@@ -1,4 +1,4 @@
-package org.example.notebooklm.log;
+package org.example.notebooklm.logs;
 
 import org.example.notebooklm.model.PdfChunk;
 import org.slf4j.Logger;

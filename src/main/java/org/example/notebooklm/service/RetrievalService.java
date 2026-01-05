@@ -1,6 +1,6 @@
 package org.example.notebooklm.service;
 
-import org.example.notebooklm.log.RetrievalLogger;
+import org.example.notebooklm.logs.RetrievalLogger;
 import org.example.notebooklm.model.PdfChunk;
 import org.example.notebooklm.repository.PdfChunkRepository;
 import org.slf4j.Logger;
