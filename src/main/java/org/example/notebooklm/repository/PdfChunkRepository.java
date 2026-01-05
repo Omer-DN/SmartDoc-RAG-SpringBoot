@@ -9,7 +9,8 @@ import java.util.List;
 
 public interface PdfChunkRepository extends JpaRepository<PdfChunk, Long> {
 
-    List<PdfChunk> findByPdfDocumentId(Long pdfId);
+    @Query(value = "SELECT * FROM pdf_chunks WHERE pdf_document_id = :pdfId", nativeQuery = true)
+    List<PdfChunk> findByPdfDocumentId(@Param("pdfId") Long pdfId);
 
     void deleteByPdfDocumentId(Long pdfId);
 
@@ -21,7 +22,7 @@ public interface PdfChunkRepository extends JpaRepository<PdfChunk, Long> {
                 pdf_document_id,
                 embedding,
                 (embedding <-> CAST(:queryVector AS vector)) AS distance
-            FROM pdf_chunk
+            FROM pdf_chunks
             WHERE pdf_document_id = :pdfId
             ORDER BY embedding <-> CAST(:queryVector AS vector)
             LIMIT :topK
