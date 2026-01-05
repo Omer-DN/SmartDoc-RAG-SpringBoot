@@ -15,22 +15,17 @@ public interface PdfChunkRepository extends JpaRepository<PdfChunk, Long> {
     void deleteByPdfDocumentId(Long pdfId);
 
     @Query(value = """
-            SELECT 
-                id,
-                text,
-                chunk_index,
-                pdf_document_id,
-                embedding,
-                (embedding <-> CAST(:queryVector AS vector)) AS distance
-            FROM pdf_chunks
-            WHERE pdf_document_id = :pdfId
-            ORDER BY embedding <-> CAST(:queryVector AS vector)
-            LIMIT :topK
-            """,
+    SELECT *, (embedding <-> CAST(:queryVector AS vector)) AS distance
+    FROM pdf_chunks
+    WHERE pdf_document_id = :pdfId
+    ORDER BY embedding <-> CAST(:queryVector AS vector)
+    LIMIT :topK
+    """,
             nativeQuery = true)
     List<PdfChunk> findSimilarChunks(
             @Param("pdfId") Long pdfId,
             @Param("queryVector") String queryVector,
             @Param("topK") int topK
     );
+
 }

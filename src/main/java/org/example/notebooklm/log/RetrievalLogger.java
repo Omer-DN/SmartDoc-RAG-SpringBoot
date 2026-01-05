@@ -1,4 +1,4 @@
-package org.example.notebooklm.logs;
+package org.example.notebooklm.log;
 
 import org.example.notebooklm.model.PdfChunk;
 import org.slf4j.Logger;
@@ -15,14 +15,18 @@ public class RetrievalLogger {
     public void logRawResults(List<PdfChunk> chunks) {
         logger.info("Retrieved {} chunks BEFORE filtering", chunks.size());
         chunks.forEach(c ->
-                logger.info("Chunk {} | distance={}", c.getChunkIndex(), c.getDistance())
+                logger.info("Chunk {} | textPreview=\"{}\"",
+                        c.getChunkIndex(),
+                        preview(c.getText()))
         );
     }
 
     public void logFilteredResults(List<PdfChunk> chunks) {
         logger.info("Remaining {} chunks AFTER filtering", chunks.size());
         chunks.forEach(c ->
-                logger.info("Kept chunk {} | distance={}", c.getChunkIndex(), c.getDistance())
+                logger.info("Kept chunk {} | textPreview=\"{}\"",
+                        c.getChunkIndex(),
+                        preview(c.getText()))
         );
     }
 
@@ -33,7 +37,14 @@ public class RetrievalLogger {
         }
 
         removed.forEach(c ->
-                logger.info("Removed chunk {} | distance={}", c.getChunkIndex(), c.getDistance())
+                logger.info("Removed chunk {} | textPreview=\"{}\"",
+                        c.getChunkIndex(),
+                        preview(c.getText()))
         );
+    }
+
+    private String preview(String text) {
+        if (text == null) return "";
+        return text.length() <= 40 ? text : text.substring(0, 40) + "...";
     }
 }

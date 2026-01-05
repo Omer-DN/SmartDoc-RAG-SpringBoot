@@ -9,5 +9,6 @@ public class NotebookLmApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(NotebookLmApplication.class, args);
+
     }
 }

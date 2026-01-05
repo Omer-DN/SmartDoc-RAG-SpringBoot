@@ -1,6 +1,6 @@
 package org.example.notebooklm.service;
 
-import org.example.notebooklm.logs.RetrievalLogger;
+import org.example.notebooklm.log.RetrievalLogger;
 import org.example.notebooklm.model.PdfChunk;
 import org.example.notebooklm.repository.PdfChunkRepository;
 import org.slf4j.Logger;
@@ -47,18 +47,13 @@ public class RetrievalService {
             return List.of();
         }
 
-        // 2️⃣ חילוץ distances
-        List<Double> distances = rawResults.stream()
-                .map(PdfChunk::getDistance)
-                .toList();
+        // 2️⃣ אין distances — מעבירים null
+        List<PdfChunk> filtered = similarityFilter.filterByDynamicThreshold(rawResults, null);
 
-        // 3️⃣ סינון לפי threshold דינמי
-        List<PdfChunk> filtered = similarityFilter.filterByDynamicThreshold(rawResults, distances);
-
-        // 4️⃣ לוגים אחרי סינון
+        // 3️⃣ לוגים אחרי סינון
         retrievalLogger.logFilteredResults(filtered);
 
-        // 5️⃣ לוגים של מה שנמחק
+        // 4️⃣ לוגים של מה שנמחק
         List<PdfChunk> removed = rawResults.stream()
                 .filter(c -> !filtered.contains(c))
                 .toList();

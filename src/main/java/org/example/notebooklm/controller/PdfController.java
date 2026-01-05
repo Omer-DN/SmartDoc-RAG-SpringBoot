@@ -51,8 +51,6 @@ public class PdfController {
 
             pdfService.processPdf(document, fullText);
 
-            logger.info("Finished processing PDF {}", document.getId());
-
             return ResponseEntity.ok(Map.of(
                     "message", "PDF uploaded and processed",
                     "documentId", document.getId()

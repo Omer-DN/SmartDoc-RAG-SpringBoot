@@ -1,73 +1,53 @@
 package org.example.notebooklm.service;
 
 import org.example.notebooklm.model.PdfChunk;
-import org.example.notebooklm.repository.PdfChunkRepository;
 import org.springframework.stereotype.Service;
 
-import java.util.Comparator;
 import java.util.List;
 
 @Service
 public class RagService {
 
-    private final PdfChunkRepository chunkRepository;
-    private final GeminiEmbeddingService geminiEmbeddingService;
     private final GeminiAnswerService geminiAnswerService;
+    private final GeminiEmbeddingService geminiEmbeddingService;
+    private final RetrievalService retrievalService;
 
-    public RagService(PdfChunkRepository chunkRepository,
+    private static final int DEFAULT_TOP_K = 5;
+
+    public RagService(GeminiAnswerService geminiAnswerService,
                       GeminiEmbeddingService geminiEmbeddingService,
-                      GeminiAnswerService geminiAnswerService) {
-        this.chunkRepository = chunkRepository;
-        this.geminiEmbeddingService = geminiEmbeddingService;
+                      RetrievalService retrievalService) {
         this.geminiAnswerService = geminiAnswerService;
+        this.geminiEmbeddingService = geminiEmbeddingService;
+        this.retrievalService = retrievalService;
     }
 
-    // ===========================
-    // RAG main flow
-    // ===========================
+    /**
+     * Finds the most relevant chunks and asks Gemini to answer the question.
+     *
+     * @param pdfId   The PDF document ID
+     * @param question The question to answer
+     * @return The answer from Gemini
+     */
     public String answerQuestion(Long pdfId, String question) {
+        // 1️⃣ יצירת embedding של השאלה
+        double[] queryEmbedding = geminiEmbeddingService.generateEmbedding(question);
 
-        List<PdfChunk> chunks = chunkRepository.findByPdfDocumentId(pdfId);
-        if (chunks.isEmpty()) {
-            return "No chunks found for this PDF";
-        }
-
-        // 1️⃣ embedding לשאלה
-        double[] questionEmbedding = geminiEmbeddingService.generateEmbedding(question);
-        if (questionEmbedding == null) {
+        if (queryEmbedding == null || queryEmbedding.length == 0) {
             return "Failed to generate embedding for question";
         }
 
-        // 2️⃣ מציאת chunk רלוונטי ביותר
-        PdfChunk bestChunk = chunks.stream()
-                .filter(c -> c.getEmbedding() != null &&
-                        c.getEmbedding().length == questionEmbedding.length)
-                .max(Comparator.comparingDouble(c ->
-                        cosineSimilarity(questionEmbedding, c.getEmbedding())))
-                .orElse(null);
+        // 2️⃣ שליפת החלקים הכי דומים
+        List<PdfChunk> topChunks = retrievalService.findSimilarChunks(pdfId, queryEmbedding, DEFAULT_TOP_K);
 
-        if (bestChunk == null) {
-            return "No relevant chunk found";
+        if (topChunks.isEmpty()) {
+            return "No relevant content found in PDF";
         }
 
-        // 3️⃣ שליחה ל-Gemini כדי לנסח תשובה אמיתית
-        return geminiAnswerService.answer(bestChunk.getText(), question);
-    }
+        // 3️⃣ בחר את החלק הכי דומה
+        PdfChunk bestChunk = topChunks.get(0);
 
-    // ===========================
-    // Cosine Similarity
-    // ===========================
-    private double cosineSimilarity(double[] vecA, double[] vecB) {
-        double dot = 0.0;
-        double normA = 0.0;
-        double normB = 0.0;
-
-        for (int i = 0; i < vecA.length; i++) {
-            dot += vecA[i] * vecB[i];
-            normA += vecA[i] * vecA[i];
-            normB += vecB[i] * vecB[i];
-        }
-
-        return dot / (Math.sqrt(normA) * Math.sqrt(normB) + 1e-10);
+        // 4️⃣ שלח ל-Gemini: pdfId + השאלה + embedding
+        return geminiAnswerService.answer(pdfId, question, queryEmbedding);
     }
 }

@@ -10,23 +10,7 @@ public class SimilarityFilter {
 
     public List<PdfChunk> filterByDynamicThreshold(List<PdfChunk> chunks, List<Double> distances) {
 
-        if (distances.isEmpty()) {
-            return chunks;
-        }
-
-        double mean = distances.stream().mapToDouble(d -> d).average().orElse(0.0);
-
-        double variance = distances.stream()
-                .mapToDouble(d -> Math.pow(d - mean, 2))
-                .average()
-                .orElse(0.0);
-
-        double stdDev = Math.sqrt(variance);
-
-        double threshold = mean + stdDev;
-
-        return chunks.stream()
-                .filter(c -> c.getDistance() <= threshold)
-                .toList();
+        // אין distances יותר — מחזירים את מה שה‑DB כבר דירג
+        return chunks;
     }
 }
