@@ -844,3 +844,64 @@ org.springframework.web.client.HttpClientErrorException$NotFound: 404 Not Found:
 2026-01-06T11:44:04.426+02:00  INFO 15164 --- [http-nio-8080-exec-5] o.example.notebooklm.service.PdfService  : PDF id 23 split into 3 chunks
 2026-01-06T11:44:06.461+02:00  INFO 15164 --- [http-nio-8080-exec-5] o.example.notebooklm.service.PdfService  : Finished processing PDF 23
 2026-01-06T11:44:22.716+02:00  INFO 15164 --- [http-nio-8080-exec-6] o.example.notebooklm.service.PdfService  : RAG Request for Gemini - PDF ID: 22, Question: According to the document, where did I study?
+2026-01-06T11:44:23.342+02:00  WARN 15164 --- [http-nio-8080-exec-6] o.example.notebooklm.service.PdfService  : No similar chunks found for PDF ID 22
+2026-01-06T11:46:41.026+02:00  INFO 4708 --- [main] o.e.notebooklm.NotebookLmApplication     : Starting NotebookLmApplication using Java 21.0.9 with PID 4708 (C:\Users\USER\IdeaProjects\practice\notebookLM\target\classes started by Dayan in C:\Users\USER\IdeaProjects\practice\notebookLM)
+2026-01-06T11:46:41.033+02:00  INFO 4708 --- [main] o.e.notebooklm.NotebookLmApplication     : No active profile set, falling back to 1 default profile: "default"
+2026-01-06T11:46:42.604+02:00  INFO 4708 --- [main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-01-06T11:46:42.806+02:00  INFO 4708 --- [main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 184 ms. Found 2 JPA repository interfaces.
+2026-01-06T11:46:44.040+02:00  INFO 4708 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port(s): 8080 (http)
+2026-01-06T11:46:44.335+02:00  INFO 4708 --- [main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 3137 ms
+2026-01-06T11:46:45.063+02:00  INFO 4708 --- [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-01-06T11:46:45.580+02:00  INFO 4708 --- [main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@3ab595c8
+2026-01-06T11:46:45.602+02:00  INFO 4708 --- [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-01-06T11:46:46.561+02:00  INFO 4708 --- [main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-01-06T11:46:48.395+02:00  INFO 4708 --- [main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-01-06T11:46:49.411+02:00  INFO 4708 --- [main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-01-06T11:46:50.544+02:00  WARN 4708 --- [main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-01-06T11:46:51.602+02:00  WARN 4708 --- [main] ConfigServletWebServerApplicationContext : Exception encountered during context initialization - cancelling refresh attempt: org.springframework.context.ApplicationContextException: Failed to start bean 'webServerStartStop'
+2026-01-06T11:46:51.607+02:00  INFO 4708 --- [main] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
+2026-01-06T11:46:51.611+02:00  INFO 4708 --- [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2026-01-06T11:46:51.628+02:00  INFO 4708 --- [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
+2026-01-06T11:46:51.778+02:00  INFO 4708 --- [main] .s.b.a.l.ConditionEvaluationReportLogger : 
+
+Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+2026-01-06T11:46:51.948+02:00 ERROR 4708 --- [main] o.s.b.d.LoggingFailureAnalysisReporter   : 
+
+***************************
+APPLICATION FAILED TO START
+***************************
+
+Description:
+
+Web server failed to start. Port 8080 was already in use.
+
+Action:
+
+Identify and stop the process that's listening on port 8080 or configure this application to listen on another port.
+
+2026-01-06T11:47:11.048+02:00  INFO 20328 --- [main] o.e.notebooklm.NotebookLmApplication     : Starting NotebookLmApplication using Java 21.0.9 with PID 20328 (C:\Users\USER\IdeaProjects\practice\notebookLM\target\classes started by Dayan in C:\Users\USER\IdeaProjects\practice\notebookLM)
+2026-01-06T11:47:11.058+02:00  INFO 20328 --- [main] o.e.notebooklm.NotebookLmApplication     : No active profile set, falling back to 1 default profile: "default"
+2026-01-06T11:47:12.685+02:00  INFO 20328 --- [main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-01-06T11:47:12.905+02:00  INFO 20328 --- [main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 204 ms. Found 2 JPA repository interfaces.
+2026-01-06T11:47:14.110+02:00  INFO 20328 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port(s): 8080 (http)
+2026-01-06T11:47:14.466+02:00  INFO 20328 --- [main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 3263 ms
+2026-01-06T11:47:15.489+02:00  INFO 20328 --- [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-01-06T11:47:15.842+02:00  INFO 20328 --- [main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@509a6095
+2026-01-06T11:47:15.862+02:00  INFO 20328 --- [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-01-06T11:47:17.890+02:00  INFO 20328 --- [main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-01-06T11:47:19.483+02:00  INFO 20328 --- [main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-01-06T11:47:20.230+02:00  INFO 20328 --- [main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-01-06T11:47:20.762+02:00  WARN 20328 --- [main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-01-06T11:47:21.532+02:00  INFO 20328 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port(s): 8080 (http) with context path ''
+2026-01-06T11:47:21.550+02:00  INFO 20328 --- [main] o.e.notebooklm.NotebookLmApplication     : Started NotebookLmApplication in 11.365 seconds (process running for 12.156)
+2026-01-06T11:48:25.297+02:00  INFO 20328 --- [http-nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-01-06T11:48:25.299+02:00  INFO 20328 --- [http-nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+2026-01-06T11:48:26.446+02:00  INFO 20328 --- [http-nio-8080-exec-4] o.springdoc.api.AbstractOpenApiResource  : Init duration for springdoc-openapi is: 610 ms
+2026-01-06T11:48:40.279+02:00  INFO 20328 --- [http-nio-8080-exec-5] o.e.notebooklm.service.IngestionService  : Successfully extracted text from PDF (2204 characters)
+2026-01-06T11:48:40.281+02:00  INFO 20328 --- [http-nio-8080-exec-5] o.e.notebooklm.controller.PdfController  : Received PDF upload request: Omer Dayan.pdf
+2026-01-06T11:48:40.462+02:00  INFO 20328 --- [http-nio-8080-exec-5] o.e.notebooklm.controller.PdfController  : Saved PDF document with ID 24
+2026-01-06T11:48:40.465+02:00  INFO 20328 --- [http-nio-8080-exec-5] o.example.notebooklm.service.PdfService  : Processing PDF id 24 using Gemini Embeddings...
+2026-01-06T11:48:40.465+02:00  INFO 20328 --- [http-nio-8080-exec-5] o.example.notebooklm.service.PdfService  : PDF id 24 split into 3 chunks
+2026-01-06T11:48:43.957+02:00  INFO 20328 --- [http-nio-8080-exec-5] o.example.notebooklm.service.PdfService  : Finished processing PDF 24
+2026-01-06T11:49:03.169+02:00  INFO 20328 --- [http-nio-8080-exec-6] o.example.notebooklm.service.PdfService  : RAG Request for Gemini - PDF ID: 24, Question: According to the document, where did I study?
+2026-01-06T11:49:03.768+02:00  WARN 20328 --- [http-nio-8080-exec-6] o.example.notebooklm.service.PdfService  : No similar chunks found for PDF ID 24
