@@ -7,9 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class RetrievalService {
@@ -29,13 +27,17 @@ public class RetrievalService {
         this.retrievalLogger = retrievalLogger;
     }
 
-    public List<PdfChunk> findSimilarChunks(Long pdfId, double[] queryEmbedding, int topK) {
+    /**
+     * Finds similar chunks using a float[] embedding.
+     */
+    public List<PdfChunk> findSimilarChunks(Long pdfId, float[] queryEmbedding, int topK) {
 
         if (queryEmbedding == null || queryEmbedding.length == 0) {
             logger.warn("Query embedding is null or empty");
             return List.of();
         }
 
+        // המרה לפורמט ש-pgvector מבין: [0.1, 0.2, ...]
         String queryVector = formatVectorForPostgres(queryEmbedding);
         logger.debug("Searching for top {} similar chunks in document {}", topK, pdfId);
 
@@ -47,7 +49,7 @@ public class RetrievalService {
             return List.of();
         }
 
-        // 2️⃣ אין distances — מעבירים null
+        // 2️⃣ אין distances בשלב זה — מעבירים null לסינון הדינמי
         List<PdfChunk> filtered = similarityFilter.filterByDynamicThreshold(rawResults, null);
 
         // 3️⃣ לוגים אחרי סינון
@@ -63,13 +65,25 @@ public class RetrievalService {
         return filtered;
     }
 
-    public List<PdfChunk> findSimilarChunks(Long pdfId, double[] queryEmbedding) {
+    /**
+     * Overloaded method with default Top K.
+     */
+    public List<PdfChunk> findSimilarChunks(Long pdfId, float[] queryEmbedding) {
         return findSimilarChunks(pdfId, queryEmbedding, DEFAULT_TOP_K);
     }
 
-    private String formatVectorForPostgres(double[] embedding) {
-        return "[" + Arrays.stream(embedding)
-                .mapToObj(d -> String.format("%.10f", d))
-                .collect(Collectors.joining(",")) + "]";
+    /**
+     * Efficiently formats a float array as a pgvector string.
+     */
+    private String formatVectorForPostgres(float[] embedding) {
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < embedding.length; i++) {
+            sb.append(String.format("%.10f", embedding[i]));
+            if (i < embedding.length - 1) {
+                sb.append(",");
+            }
+        }
+        sb.append("]");
+        return sb.toString();
     }
 }

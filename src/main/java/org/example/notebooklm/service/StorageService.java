@@ -25,20 +25,17 @@ public class StorageService {
     private final PdfChunkRepository chunkRepository;
 
     public StorageService(PdfDocumentRepository documentRepository,
-                         PdfChunkRepository chunkRepository) {
+                          PdfChunkRepository chunkRepository) {
         this.documentRepository = documentRepository;
         this.chunkRepository = chunkRepository;
     }
 
     /**
      * Saves a PDF document to the database.
-     *
-     * @param pdfDocument The document to save
-     * @return The saved document with generated ID
      */
     @Transactional
     public PdfDocument saveDocument(PdfDocument pdfDocument) {
-        logger.info("Saving PDF document: {}", pdfDocument.getFilename());
+        logger.info("Saving PDF document metadata: {}", pdfDocument.getFileName());
         PdfDocument saved = documentRepository.save(pdfDocument);
         logger.debug("PDF document saved with ID: {}", saved.getId());
         return saved;
@@ -46,13 +43,10 @@ public class StorageService {
 
     /**
      * Saves a chunk and associates it with a document.
-     *
-     * @param chunk The chunk to save
-     * @param document The document to associate with
-     * @return The saved chunk
      */
     @Transactional
     public PdfChunk saveChunk(PdfChunk chunk, PdfDocument document) {
+        // קישור ה-Chunk למסמך האב
         document.addChunk(chunk);
         PdfChunk saved = chunkRepository.save(chunk);
         logger.debug("Saved chunk {} for document {}", saved.getChunkIndex(), document.getId());
@@ -61,55 +55,38 @@ public class StorageService {
 
     /**
      * Saves multiple chunks in a batch operation.
-     *
-     * @param chunks The chunks to save
-     * @param document The document to associate with
+     * שימוש ב-saveAll במקום לולאת save אינדיבידואלית לביצועים משופרים.
      */
     @Transactional
     public void saveChunks(List<PdfChunk> chunks, PdfDocument document) {
-        logger.info("Saving {} chunks for document {}", chunks.size(), document.getId());
+        logger.info("Saving batch of {} chunks for document ID: {}", chunks.size(), document.getId());
+
+        // עדכון הקישור הדו-כיווני עבור כל צ'אנק
         for (PdfChunk chunk : chunks) {
             document.addChunk(chunk);
-            chunkRepository.save(chunk);
         }
+
+        // ביצוע שמירה מאוחדת (Batch Insert)
+        chunkRepository.saveAll(chunks);
         logger.debug("Successfully saved all chunks for document {}", document.getId());
     }
 
-    /**
-     * Retrieves a document by ID.
-     *
-     * @param id The document ID
-     * @return Optional containing the document if found
-     */
+    @Transactional(readOnly = true)
     public Optional<PdfDocument> findDocumentById(Long id) {
         return documentRepository.findById(id);
     }
 
-    /**
-     * Retrieves all PDF documents.
-     *
-     * @return List of all documents
-     */
+    @Transactional(readOnly = true)
     public List<PdfDocument> findAllDocuments() {
         return documentRepository.findAll();
     }
 
-    /**
-     * Retrieves chunks for a specific document.
-     *
-     * @param documentId The document ID
-     * @return List of chunks for the document
-     */
+    @Transactional(readOnly = true)
     public List<PdfChunk> findChunksByDocumentId(Long documentId) {
+        // וודא שב-Repository קיימת המתודה findByPdfDocumentId
         return chunkRepository.findByPdfDocumentId(documentId);
     }
 
-    /**
-     * Deletes a document and all its associated chunks.
-     *
-     * @param id The document ID
-     * @return true if document was found and deleted, false otherwise
-     */
     @Transactional
     public boolean deleteDocument(Long id) {
         Optional<PdfDocument> doc = documentRepository.findById(id);
@@ -118,23 +95,18 @@ public class StorageService {
             return false;
         }
 
-        logger.info("Deleting document {} and its chunks", id);
+        logger.info("Deleting document {} and all its associated chunks (Cascade)", id);
+        // בזכות CascadeType.ALL במודל, המחיקה של ה-Document תמחק אוטומטית את הצ'אנקים
         documentRepository.delete(doc.get());
         logger.debug("Successfully deleted document {}", id);
         return true;
     }
 
-    /**
-     * Deletes all documents and chunks.
-     */
     @Transactional
     public void deleteAll() {
-        logger.warn("Deleting all documents and chunks");
+        logger.warn("Request to delete all documents and chunks in the database");
         chunkRepository.deleteAll();
         documentRepository.deleteAll();
-        logger.info("All documents and chunks deleted");
+        logger.info("Database cleared: All documents and chunks deleted");
     }
 }
-
-
-

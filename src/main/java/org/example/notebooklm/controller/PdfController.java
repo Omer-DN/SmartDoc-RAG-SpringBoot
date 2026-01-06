@@ -1,94 +1,109 @@
 package org.example.notebooklm.controller;
 
-import io.swagger.v3.oas.annotations.tags.Tag;
-import org.example.notebooklm.model.PdfChunk;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.example.notebooklm.model.PdfDocument;
+import org.example.notebooklm.service.IngestionService;
 import org.example.notebooklm.service.PdfService;
-import org.example.notebooklm.service.RagService;
-import org.example.notebooklm.util.PdfTextExtractor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/pdf")
-@Tag(name = "PDF Management")
+@CrossOrigin(origins = "*")
 public class PdfController {
 
     private static final Logger logger = LoggerFactory.getLogger(PdfController.class);
-
     private final PdfService pdfService;
-    private final RagService ragService;
-    private final PdfTextExtractor pdfTextExtractor;
+    private final IngestionService ingestionService;
 
-    public PdfController(PdfService pdfService,
-                         RagService ragService,
-                         PdfTextExtractor pdfTextExtractor) {
+    public PdfController(PdfService pdfService, IngestionService ingestionService) {
         this.pdfService = pdfService;
-        this.ragService = ragService;
-        this.pdfTextExtractor = pdfTextExtractor;
+        this.ingestionService = ingestionService;
     }
 
+    @Operation(summary = "Upload a PDF file and process its embeddings")
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> uploadPdf(@RequestParam("file") MultipartFile file) {
-        logger.info("Received PDF upload request: {}", file.getOriginalFilename());
+    public ResponseEntity<?> uploadPdf(
+            @Parameter(description = "The PDF file to upload", required = true,
+                    content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+                            schema = @Schema(type = "string", format = "binary")))
+            @RequestParam("file") MultipartFile file) {
 
-        try {
-            String fullText = pdfTextExtractor.extractText(file);
-            logger.info("Extracted {} characters from PDF {}", fullText.length(), file.getOriginalFilename());
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().body("File is empty");
+        }
 
-            PdfDocument document = new PdfDocument();
-            document.setFilename(file.getOriginalFilename());
-            document = pdfService.saveDocument(document);
+        try (InputStream inputStream = file.getInputStream()) {
+            ingestionService.validatePdfFile(file);
+            String text = ingestionService.extractTextFromPdf(inputStream);
 
-            logger.info("Saved PDF document with ID {}", document.getId());
+            logger.info("Received PDF upload request: {}", file.getOriginalFilename());
 
-            pdfService.processPdf(document, fullText);
+            PdfDocument pdfDoc = new PdfDocument();
+            pdfDoc.setFileName(file.getOriginalFilename());
 
-            return ResponseEntity.ok(Map.of(
-                    "message", "PDF uploaded and processed",
-                    "documentId", document.getId()
-            ));
-        } catch (Exception e) {
-            logger.error("Error processing PDF {}", file.getOriginalFilename(), e);
-            return ResponseEntity.status(500).body("Error processing PDF");
+            PdfDocument savedDoc = pdfService.saveDocument(pdfDoc);
+            logger.info("Saved PDF document with ID {}", savedDoc.getId());
+
+            pdfService.processPdf(savedDoc, text);
+
+            return ResponseEntity.ok(savedDoc);
+
+        } catch (IOException e) {
+            logger.error("Error processing PDF upload", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to process PDF: " + e.getMessage());
         }
     }
 
-    @GetMapping
-    public List<PdfDocument> getAllPdfs() {
-        logger.info("Fetching all PDFs");
-        return pdfService.getAllPdfs();
+    @GetMapping("/all")
+    public ResponseEntity<List<PdfDocument>> getAllPdfs() {
+        return ResponseEntity.ok(pdfService.getAllPdfs());
     }
 
-    @GetMapping("/{id}/chunks")
-    public List<PdfChunk> getChunks(@PathVariable Long id) {
-        logger.info("Fetching chunks for PDF {}", id);
-        return pdfService.getChunksForPdf(id);
+    @PostMapping("/{id}/ask")
+    public ResponseEntity<?> ask(@PathVariable Long id, @RequestBody Map<String, String> payload) {
+        String question = payload.get("question");
+        if (question == null || question.isEmpty()) {
+            return ResponseEntity.badRequest().body("Question is missing");
+        }
+
+        try {
+            String answer = pdfService.askQuestion(id, question);
+            return ResponseEntity.ok(Map.of("answer", answer));
+        } catch (Exception e) {
+            logger.error("Error answering question for PDF {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error: " + e.getMessage());
+        }
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deletePdf(@PathVariable Long id) {
-        logger.info("Deleting PDF {}", id);
         boolean deleted = pdfService.deletePdf(id);
-        return deleted ? ResponseEntity.ok("Deleted") : ResponseEntity.notFound().build();
+        if (deleted) {
+            return ResponseEntity.ok(Map.of("message", "PDF deleted successfully"));
+        } else {
+            return ResponseEntity.notFound().build();
+        }
     }
 
-    @PostMapping("/{id}/ask")
-    public ResponseEntity<?> ask(@PathVariable Long id, @RequestBody Map<String, String> body) {
-        String question = body.get("question");
-        logger.info("Received question for PDF {}: {}", id, question);
-
-        String answer = ragService.answerQuestion(id, question);
-
-        logger.info("Answer for PDF {}: {}", id, answer);
-
-        return ResponseEntity.ok(Map.of("answer", answer));
+    @DeleteMapping("/reset")
+    public ResponseEntity<?> resetAll() {
+        pdfService.resetAll();
+        return ResponseEntity.ok(Map.of("message", "All documents cleared"));
     }
 }

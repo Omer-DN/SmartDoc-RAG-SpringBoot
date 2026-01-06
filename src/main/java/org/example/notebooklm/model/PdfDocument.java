@@ -13,53 +13,24 @@ public class PdfDocument {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String filename;
+    private String fileName;
 
-    @Lob
-    @Column(columnDefinition = "TEXT")
-    private String content;
-
-    @OneToMany(mappedBy = "pdfDocument", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "pdfDocument", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<PdfChunk> chunks = new ArrayList<>();
 
-    // ===== helpers =====
+    // מתודת עזר לניהול הקשר הדו-כיווני
     public void addChunk(PdfChunk chunk) {
         chunks.add(chunk);
         chunk.setPdfDocument(this);
     }
 
-    public void removeChunk(PdfChunk chunk) {
-        chunks.remove(chunk);
-        chunk.setPdfDocument(null);
-    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    // ===== getters & setters =====
-    public Long getId() {
-        return id;
-    }
+    public String getFileName() { return fileName; }
+    public void setFileName(String fileName) { this.fileName = fileName; }
 
-    public String getFilename() {
-        return filename;
-    }
-
-    public void setFilename(String filename) {
-        this.filename = filename;
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    public void setContent(String content) {
-        this.content = content;
-    }
-
-    public List<PdfChunk> getChunks() {
-        return chunks;
-    }
-
-    public void setChunks(List<PdfChunk> chunks) {
-        this.chunks = chunks;
-    }
+    public List<PdfChunk> getChunks() { return chunks; }
+    public void setChunks(List<PdfChunk> chunks) { this.chunks = chunks; }
 }

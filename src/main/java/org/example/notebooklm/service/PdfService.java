@@ -7,8 +7,12 @@ import org.example.notebooklm.repository.PdfDocumentRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Locale;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @Service
 public class PdfService {
@@ -20,22 +24,23 @@ public class PdfService {
     private final EmbeddingService embeddingService;
     private final ChunkingService chunkingService;
     private final GeminiAnswerService llmService;
+    private final TopKSelector topKSelector;
 
     public PdfService(PdfDocumentRepository documentRepository,
                       PdfChunkRepository chunkRepository,
                       EmbeddingService embeddingService,
                       ChunkingService chunkingService,
-                      GeminiAnswerService llmService) {
-
+                      GeminiAnswerService llmService,
+                      TopKSelector topKSelector) {
         this.documentRepository = documentRepository;
         this.chunkRepository = chunkRepository;
         this.embeddingService = embeddingService;
         this.chunkingService = chunkingService;
         this.llmService = llmService;
+        this.topKSelector = topKSelector;
     }
 
     public PdfDocument saveDocument(PdfDocument document) {
-        logger.info("Saving PDF document: {}", document.getId());
         return documentRepository.save(document);
     }
 
@@ -43,43 +48,36 @@ public class PdfService {
         return documentRepository.findAll();
     }
 
-    public List<PdfChunk> getChunksForPdf(Long pdfId) {
-        return chunkRepository.findByPdfDocumentId(pdfId);
-    }
-
+    @Transactional
     public boolean deletePdf(Long pdfId) {
-        if (!documentRepository.existsById(pdfId)) {
-            logger.warn("Attempted to delete non-existing PDF: {}", pdfId);
-            return false;
-        }
-
-        logger.info("Deleting PDF {} and its chunks", pdfId);
-        chunkRepository.deleteByPdfDocumentId(pdfId);
-        documentRepository.deleteById(pdfId);
-
-        return true;
+        return documentRepository.findById(pdfId).map(doc -> {
+            logger.info("Deleting PDF {} and its chunks", pdfId);
+            documentRepository.delete(doc);
+            return true;
+        }).orElse(false);
     }
 
+    @Transactional
     public void resetAll() {
         logger.warn("Resetting ALL documents and chunks");
         chunkRepository.deleteAll();
         documentRepository.deleteAll();
     }
 
+    @Transactional
     public void processPdf(PdfDocument document, String fullText) {
         if (document == null || document.getId() == null) {
             throw new IllegalArgumentException("PdfDocument must be persisted before processing");
         }
 
-        logger.info("Processing PDF id {}...", document.getId());
+        logger.info("Processing PDF id {} using Gemini Embeddings...", document.getId());
 
         List<String> chunks = chunkingService.chunk(fullText);
         logger.info("PDF id {} split into {} chunks", document.getId(), chunks.size());
 
         int index = 0;
-
         for (String chunkText : chunks) {
-            double[] embedding = embeddingService.generateEmbedding(chunkText);
+            float[] embedding = embeddingService.generateEmbedding(chunkText);
 
             if (embedding == null || embedding.length == 0) {
                 logger.error("Embedding generation failed for chunk {}", index);
@@ -94,52 +92,44 @@ public class PdfService {
 
             chunkRepository.save(chunk);
         }
-
         logger.info("Finished processing PDF {}", document.getId());
     }
 
-    // ⭐⭐⭐ פונקציית askQuestion — הגרסה הנכונה והיחידה ⭐⭐⭐
+    /**
+     * פונקציית ה-RAG המרכזית המותאמת ל-Gemini
+     */
     public String askQuestion(Long pdfId, String question) {
+        logger.info("RAG Request for Gemini - PDF ID: {}, Question: {}", pdfId, question);
 
-        logger.info("Received question for PDF {}: {}", pdfId, question);
-
-        double[] queryEmbedding = embeddingService.generateEmbedding(question);
-
-        logger.debug("Query embedding length: {}", queryEmbedding.length);
-
+        // 1. יצירת וקטור לשאלה (Retrieval Phase) - משתמש ב-GeminiEmbeddingService
+        float[] queryEmbedding = embeddingService.generateEmbedding(question);
         if (queryEmbedding == null || queryEmbedding.length == 0) {
-            logger.error("Failed to generate embedding for question");
-            throw new RuntimeException("Embedding generation failed");
+            throw new RuntimeException("Could not generate embedding for question");
         }
 
-        String vectorString = vectorToString(queryEmbedding);
+        // 2. המרה לפורמט וקטורי תקני עבור PostgreSQL/pgvector: [val1,val2,...]
+        // התיקון: שימוש ב-Locale.US ובנייה ידנית למניעת שגיאות Syntax ב-SQL
+        String vectorString = "[" +
+                IntStream.range(0, queryEmbedding.length)
+                        .mapToObj(i -> String.format(Locale.US, "%.8f", queryEmbedding[i]))
+                        .collect(Collectors.joining(",")) +
+                "]";
 
-        logger.debug("Query vector: {}", vectorString);
-
-        List<PdfChunk> similarChunks =
-                chunkRepository.findSimilarChunks(pdfId, vectorString, 5);
+        // 3. חיפוש הצ'אנקים הכי רלוונטיים ב-DB
+        int topK = topKSelector.selectTopK(question);
+        List<PdfChunk> similarChunks = chunkRepository.findSimilarChunks(pdfId, vectorString, topK);
 
         if (similarChunks == null || similarChunks.isEmpty()) {
-            logger.warn("No similar chunks found for PDF {} and question '{}'", pdfId, question);
-            return "I couldn't find relevant information in this PDF.";
+            logger.warn("No similar chunks found for PDF ID {}", pdfId);
+            return "No relevant information found in the document.";
         }
 
-        logger.info("Found {} relevant chunks for question", similarChunks.size());
+        // 4. איחוד הטקסטים שנמצאו ל-Context אחד (Augmentation Phase)
+        String context = similarChunks.stream()
+                .map(PdfChunk::getText)
+                .collect(Collectors.joining("\n---\n"));
 
-        String answer = llmService.answer(pdfId, question, queryEmbedding);
-
-        logger.info("LLM answer: {}", answer);
-
-        return answer;
-    }
-
-    private String vectorToString(double[] vector) {
-        StringBuilder sb = new StringBuilder("[");
-        for (int i = 0; i < vector.length; i++) {
-            sb.append(vector[i]);
-            if (i < vector.length - 1) sb.append(",");
-        }
-        sb.append("]");
-        return sb.toString();
+        // 5. שליחה ל-Gemini לקבלת תשובה סופית (Generation Phase)
+        return llmService.answer(question, context);
     }
 }

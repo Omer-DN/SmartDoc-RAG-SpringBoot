@@ -2,6 +2,8 @@ package org.example.notebooklm.model;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "pdf_chunks")
@@ -22,13 +24,17 @@ public class PdfChunk {
     @JsonBackReference
     private PdfDocument pdfDocument;
 
-    @Column(columnDefinition = "vector(768)")
-    private double[] embedding;
+    // שימוש ב-float[] - הטיפוס היחיד שנתמך כרגע בשרשרת שלנו
+    @Column(name = "embedding", columnDefinition = "vector(768)")
+    @Convert(converter = VectorConverter.class)
+    @JdbcTypeCode(SqlTypes.OTHER)
+    private float[] embedding;
 
     @Transient
     private Double distance;
 
     public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
     public String getText() { return text; }
     public void setText(String text) { this.text = text; }
@@ -39,8 +45,8 @@ public class PdfChunk {
     public PdfDocument getPdfDocument() { return pdfDocument; }
     public void setPdfDocument(PdfDocument pdfDocument) { this.pdfDocument = pdfDocument; }
 
-    public double[] getEmbedding() { return embedding; }
-    public void setEmbedding(double[] embedding) { this.embedding = embedding; }
+    public float[] getEmbedding() { return embedding; }
+    public void setEmbedding(float[] embedding) { this.embedding = embedding; }
 
     public Double getDistance() { return distance; }
     public void setDistance(Double distance) { this.distance = distance; }
