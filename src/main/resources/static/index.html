@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart PDF Q&A</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { margin:0; font-family:'Inter', sans-serif; background:linear-gradient(135deg,#f5f7fa,#c3cfe2); display:flex; justify-content:center; align-items:center; height:100vh;}
+        .container { background:white; padding:2rem; border-radius:15px; box-shadow:0 15px 30px rgba(0,0,0,0.2); width:400px; max-width:90%; }
+        h1 { text-align:center; color:#4a4a4a; margin-bottom:1rem; }
+        .section { margin-bottom:1.5rem; }
+        input[type="file"], input[type="text"] { width:100%; padding:0.5rem; margin-top:0.5rem; border-radius:8px; border:1px solid #ccc; font-size:1rem; }
+        button { width:100%; background:#6c63ff; color:white; padding:0.6rem; border:none; border-radius:8px; font-weight:600; margin-top:0.5rem; cursor:pointer; transition:0.2s; }
+        button:hover { background:#5750d4; }
+        #chatBox { border:1px solid #ccc; padding:1rem; height:150px; overflow-y:auto; border-radius:8px; background:#f9f9f9; position:relative; }
+        .message { margin-bottom:0.5rem; padding:0.5rem; border-radius:5px; }
+        .user { background:#d1e7ff; text-align:right; }
+        .bot { background:#e2ffd8; text-align:left; }
+        #thinkingBox { display:none; position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:#ffe680; color:#333; padding:10px 20px; border-radius:10px; font-weight:bold; box-shadow:0 5px 15px rgba(0,0,0,0.2); z-index:10; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Smart PDF Q&A</h1>
+
+    <div class="section">
+        <label>Upload PDF</label>
+        <input type="file" id="pdfFile" />
+        <button onclick="uploadPdf()">Upload PDF</button>
+        <p id="uploadStatus"></p>
+    </div>
+
+    <div class="section">
+        <label>Ask a Question</label>
+        <input type="text" id="questionInput" placeholder="Type your question here..." />
+        <button onclick="askQuestion()">Send Question</button>
+    </div>
+
+    <div class="section">
+        <label>Chat Output</label>
+        <div id="chatBox">
+            <div id="thinkingBox">Thinking...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let uploadedFileName = null;
+    let thinkingInterval = null;
+
+    /* ---------- UI helpers ---------- */
+
+    function appendMessage(text, sender = 'bot', id = null) {
+        const chatBox = document.getElementById('chatBox');
+        const msg = document.createElement('div');
+        msg.className = `message ${sender}`;
+        msg.innerText = text;
+        if (id) msg.id = id;
+        chatBox.appendChild(msg);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    /* ---------- Thinking animation ---------- */
+
+    function startThinking() {
+        const dots = ['.', '..', '...'];
+        let index = 0;
+
+        appendMessage('.', 'bot', 'thinking');
+
+        thinkingInterval = setInterval(() => {
+            const el = document.getElementById('thinking');
+            if (el) {
+                el.innerText = dots[index % dots.length];
+                index++;
+            }
+        }, 500);
+    }
+
+    function stopThinking() {
+        clearInterval(thinkingInterval);
+        const el = document.getElementById('thinking');
+        if (el) el.remove();
+    }
+
+    /* ---------- Upload PDF ---------- */
+
+    function uploadPdf() {
+        const fileInput = document.getElementById('pdfFile');
+        if (!fileInput.files.length) {
+            alert("Select a PDF first");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+
+        fetch('http://localhost:8080/api/pdf/upload', {
+            method: 'POST',
+            body: formData
+        })
+            .then(res => res.json())
+            .then(data => {
+                uploadedFileName = data.fileName;
+                appendMessage(`PDF uploaded: ${uploadedFileName}`, 'bot');
+            })
+            .catch(err => {
+                appendMessage('Upload failed', 'bot');
+            });
+    }
+
+    /* ---------- Ask Question ---------- */
+
+    function askQuestion() {
+        if (!uploadedFileName) {
+            alert("Upload a PDF first");
+            return;
+        }
+
+        const input = document.getElementById('questionInput');
+        const question = input.value.trim();
+        if (!question) return;
+
+        appendMessage(question, 'user');
+        input.value = '';
+
+        startThinking();
+
+        fetch('http://localhost:8080/api/question', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question })
+        })
+            .then(res => res.json())
+            .then(data => {
+                setTimeout(() => {
+                    stopThinking();
+                    appendMessage(data.answer || "No answer found", 'bot');
+                }, 2500); // ← 2.5 שניות (אפשר 2000 / 3000)
+            })
+            .catch(err => {
+                stopThinking();
+                appendMessage('Error communicating with server', 'bot');
+            });
+    }
+</script>
+
+</body>
+</html>
