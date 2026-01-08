@@ -1,33 +1,40 @@
 package org.example.notebooklm.repository;
 
 import org.example.notebooklm.model.PdfChunk;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
-
 import java.util.List;
 
 @Repository
-public interface PdfChunkRepository extends JpaRepository<PdfChunk, Long> {
+public class PdfChunkRepository {
 
-    /**
-     * מוצא את כל הצ'אנקים השייכים למסמך מסוים.
-     * הערה: וודא שבתוך מחלקת PdfChunk השדה נקרא pdfDocument.
-     */
-    List<PdfChunk> findByPdfDocumentId(Long pdfDocumentId);
+    private final JdbcTemplate jdbcTemplate;
 
-    /**
-     * מבצע חיפוש דמיון וקטורי (Cosine Similarity).
-     * אנחנו משתמשים ב-Native Query כדי לעקוף את בעיית הטיפוסים של Hibernate
-     * ומבצעים CAST מפורש ל-vector.
-     */
-    @Query(value = "SELECT * FROM pdf_chunks c " +
-            "WHERE c.pdf_id = :pdfId " +
-            "ORDER BY c.embedding <=> CAST(:vectorString AS vector) " +
-            "LIMIT :limit",
-            nativeQuery = true)
-    List<PdfChunk> findSimilarChunks(@Param("pdfId") Long pdfId,
-                                     @Param("vectorString") String vectorString,
-                                     @Param("limit") int limit);
+    public PdfChunkRepository(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
+
+    // זו המתודה ששומרת - קראנו לה saveChunk
+    public void saveChunk(PdfChunk chunk, float[] vector) {
+        String sql = "INSERT INTO pdf_chunks (text, chunk_index, pdf_id, embedding) VALUES (?, ?, ?, ?::vector)";
+        jdbcTemplate.update(sql,
+                chunk.getText(),
+                chunk.getChunkIndex(),
+                chunk.getPdfDocument().getId(),
+                vector);
+    }
+
+    // המתודה הזו מקבלת float[] queryVector ולא String
+    public List<PdfChunk> findSimilarChunks(long pdfId, float[] queryVector, int limit) {
+        String sql = "SELECT id, text, chunk_index FROM pdf_chunks WHERE pdf_id = ? " +
+                "ORDER BY embedding <=> ?::vector LIMIT ?";
+
+        return jdbcTemplate.query(sql, (rs, rowNum) -> {
+            PdfChunk chunk = new PdfChunk();
+            chunk.setId(rs.getLong("id"));
+            chunk.setText(rs.getString("text"));
+            chunk.setChunkIndex(rs.getInt("chunk_index"));
+            return chunk;
+        }, pdfId, queryVector, limit);
+    }
 }

@@ -1,7 +1,5 @@
 package org.example.notebooklm.test;
 
-
-import org.example.notebooklm.service.GeminiEmbeddingService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -11,16 +9,16 @@ import java.util.Arrays;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
-public class GeminiEmbeddingServiceTest {
+public class OpenAiEmbeddingServiceTest {
 
     @Autowired
-    private GeminiEmbeddingService geminiEmbeddingService;
+    private OpenAiEmbeddingService openAiEmbeddingService;
 
     @Test
     void testEmbeddingNotNullAndLength() {
         String text = "Hello world";
 
-        float[] embedding = geminiEmbeddingService.generateEmbedding(text);
+        float[] embedding = openAiEmbeddingService.generateEmbedding(text);
 
         assertNotNull(embedding, "Embedding should not be null");
         assertTrue(embedding.length > 0, "Embedding length should be greater than 0");
@@ -33,12 +31,11 @@ public class GeminiEmbeddingServiceTest {
     void testEmbeddingConsistency() {
         String text = "Hello world";
 
-        float[] emb1 = geminiEmbeddingService.generateEmbedding(text);
-        float[] emb2 = geminiEmbeddingService.generateEmbedding(text);
+        float[] emb1 = openAiEmbeddingService.generateEmbedding(text);
+        float[] emb2 = openAiEmbeddingService.generateEmbedding(text);
 
         assertEquals(emb1.length, emb2.length, "Embeddings length should be equal");
 
-        // חישוב דמיון קוסינוס פשוט
         double dot = 0.0, normA = 0.0, normB = 0.0;
         for (int i = 0; i < emb1.length; i++) {
             dot += emb1[i] * emb2[i];

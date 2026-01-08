@@ -1,9 +1,6 @@
 package org.example.notebooklm.model;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "pdf_chunks")
@@ -13,41 +10,30 @@ public class PdfChunk {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(columnDefinition = "text")
+    @Column(columnDefinition = "TEXT")
     private String text;
 
-    @Column(name = "chunk_index")
     private int chunkIndex;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "pdf_document_id")
-    @JsonBackReference
+    @ManyToOne
+    @JoinColumn(name = "pdf_id")
     private PdfDocument pdfDocument;
 
-    // שימוש ב-float[] - הטיפוס היחיד שנתמך כרגע בשרשרת שלנו
+    // הגדרה שתואמת ל-Gemini
     @Column(name = "embedding", columnDefinition = "vector(768)")
-    @Convert(converter = VectorConverter.class)
-    @JdbcTypeCode(SqlTypes.OTHER)
     private float[] embedding;
 
-    @Transient
-    private Double distance;
+    public PdfChunk() {}
 
+    // Getters & Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-
     public String getText() { return text; }
     public void setText(String text) { this.text = text; }
-
     public int getChunkIndex() { return chunkIndex; }
     public void setChunkIndex(int chunkIndex) { this.chunkIndex = chunkIndex; }
-
     public PdfDocument getPdfDocument() { return pdfDocument; }
     public void setPdfDocument(PdfDocument pdfDocument) { this.pdfDocument = pdfDocument; }
-
     public float[] getEmbedding() { return embedding; }
     public void setEmbedding(float[] embedding) { this.embedding = embedding; }
-
-    public Double getDistance() { return distance; }
-    public void setDistance(Double distance) { this.distance = distance; }
 }
